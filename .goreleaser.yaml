@@ -1,0 +1,29 @@
+version: 2
+
+builds:
+  - id: go-build-cache
+    main: .
+    binary: go-build-cache
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+kos:
+  - repositories: [ghcr.io/cego/go-build-cache]
+    tags: ["{{ .Version }}", latest]
+    bare: true
+    platforms: [linux/amd64, linux/arm64]
+
+release:
+  github:
+    owner: cego
+    name: go-build-cache
