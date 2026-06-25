@@ -5,7 +5,7 @@ A shared Go build cache as a single binary with two subcommands:
 - `go-build-cache serve` — HTTP cache server, local disk L1 in front of an S3 (e.g. SeaweedFS) L2. Holds the S3 credentials; runs as a host service.
 - `go-build-cache cacheprog` — the `GOCACHEPROG` child process the go toolchain runs. Talks HTTP to the server (credential-free) and falls back to local disk if the server is unreachable.
 
-The server speaks the `bradfitz/go-tool-cache` HTTP protocol and reuses its `cacheproc`/`cachers` packages for the protocol loop and disk tier.
+It implements cmd/go's `GOCACHEPROG` stdin/stdout protocol and a small HTTP cache protocol itself — no third-party cache dependency.
 
 ## Usage
 

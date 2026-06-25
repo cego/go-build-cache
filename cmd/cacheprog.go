@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bradfitz/go-tool-cache/cacheproc"
-	"github.com/bradfitz/go-tool-cache/cachers"
+	"github.com/cego/go-build-cache/internal/cache"
+	"github.com/cego/go-build-cache/internal/cacheprog"
 	"github.com/spf13/cobra"
 )
 
@@ -45,8 +45,8 @@ func runCacheprog(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	disk := &cachers.DiskCache{Dir: dir}
-	proc := &cacheproc.Process{
+	disk := &cache.DiskCache{Dir: dir}
+	proc := &cacheprog.Process{
 		Close: func() error { return nil },
 		Get:   disk.Get,
 		Put:   disk.Put,
@@ -69,12 +69,9 @@ func runCacheprog(_ *cobra.Command, _ []string) error {
 	}
 
 	if serverBase != "" {
-		hc := &cachers.HTTPClient{
-			BaseURL:        serverBase,
-			Disk:           disk,
-			Verbose:        cacheprogFlags.verbose,
-			AccessToken:    cacheprogFlags.accessToken,
-			BestEffortHTTP: true,
+		hc := &cache.HTTPClient{
+			BaseURL: serverBase,
+			Disk:    disk,
 		}
 		proc.Get = hc.Get
 		proc.Put = hc.Put

@@ -7,10 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/bradfitz/go-tool-cache/cachers"
+	"github.com/cego/go-build-cache/internal/cache"
+	"github.com/cego/go-build-cache/internal/server"
 	"github.com/spf13/cobra"
-	"gitlab.cego.dk/cego/go-build-cache/internal/cache"
-	"gitlab.cego.dk/cego/go-build-cache/internal/server"
 )
 
 var serveCmd = &cobra.Command{
@@ -65,7 +64,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		o.UsePathStyle = serveFlags.pathStyle
 	})
 
-	disk := &cachers.DiskCache{Dir: dir}
+	disk := &cache.DiskCache{Dir: dir}
 	c := cache.NewS3Cache(disk, client, serveFlags.bucket, serveFlags.prefix, serveFlags.verbose)
 	srv := &server.Server{Cache: c, Verbose: serveFlags.verbose}
 

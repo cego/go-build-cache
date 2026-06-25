@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/bradfitz/go-tool-cache/cachers"
 )
 
 type actionMeta struct {
@@ -21,14 +20,14 @@ type actionMeta struct {
 
 // S3Cache is a two-tier cache: a local disk L1 in front of an S3 bucket L2.
 type S3Cache struct {
-	disk   *cachers.DiskCache
+	disk   *DiskCache
 	client *s3.Client
 	bucket string
 	prefix string
 	log    bool
 }
 
-func NewS3Cache(disk *cachers.DiskCache, client *s3.Client, bucket, prefix string, verbose bool) *S3Cache {
+func NewS3Cache(disk *DiskCache, client *s3.Client, bucket, prefix string, verbose bool) *S3Cache {
 	return &S3Cache{disk: disk, client: client, bucket: bucket, prefix: prefix, log: verbose}
 }
 

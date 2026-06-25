@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bradfitz/go-tool-cache/cachers"
+	"github.com/cego/go-build-cache/internal/cache"
 )
 
 // Cache is the storage the server exposes over HTTP.
@@ -59,7 +59,7 @@ func (s *Server) handleGetAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(&cachers.ActionValue{OutputID: outputID, Size: fi.Size()})
+	_ = json.NewEncoder(w).Encode(&cache.ActionValue{OutputID: outputID, Size: fi.Size()})
 }
 
 func (s *Server) handleGetOutput(w http.ResponseWriter, r *http.Request) {

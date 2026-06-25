@@ -1,6 +1,6 @@
 package main
 
-import "gitlab.cego.dk/cego/go-build-cache/cmd"
+import "github.com/cego/go-build-cache/cmd"
 
 func main() {
 	cmd.Execute()
