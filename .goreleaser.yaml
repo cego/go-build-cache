@@ -11,11 +11,12 @@ builds:
     ldflags: ["-s -w -X main.version={{.Version}}"]
 
 archives:
-  - formats: [tar.gz]
+  - formats: [binary]
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
-  name_template: checksums.txt
+  split: true
+  name_template: "{{ .ArtifactName }}.sha256sum"
 
 kos:
   - repositories: [ghcr.io/cego/go-build-cache]
