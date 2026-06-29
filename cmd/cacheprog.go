@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,29 +56,41 @@ func runCacheprog(_ *cobra.Command, _ []string) error {
 	serverBase := cacheprogFlags.cacheServer
 	if serverBase == "" && cacheprogFlags.gatewayPort != 0 {
 		if gw, ok := gatewayIP(); ok {
-			probe := net.JoinHostPort(gw, fmt.Sprint(cacheprogFlags.gatewayPort))
-			d := net.Dialer{Timeout: time.Second / 2}
-			if c, err := d.Dial("tcp", probe); err != nil {
-				log.Printf("go-build-cache: cache server %s unreachable, using local disk: %v", probe, err)
-			} else {
-				_ = c.Close()
-				serverBase = "http://" + probe
-			}
+			serverBase = "http://" + net.JoinHostPort(gw, fmt.Sprint(cacheprogFlags.gatewayPort))
 		} else {
 			log.Printf("go-build-cache: no gateway IP found, using local disk")
 		}
 	}
 
 	if serverBase != "" {
-		hc := &cache.HTTPClient{
-			BaseURL: serverBase,
-			Disk:    disk,
+		if host, err := hostPort(serverBase); err != nil {
+			log.Printf("go-build-cache: invalid cache server %q, using local disk: %v", serverBase, err)
+		} else if c, err := net.DialTimeout("tcp", host, time.Second/2); err != nil {
+			log.Printf("go-build-cache: cache server %s unreachable, using local disk only: %v", serverBase, err)
+		} else {
+			_ = c.Close()
+			hc := &cache.HTTPClient{BaseURL: serverBase, Disk: disk}
+			proc.Get = hc.Get
+			proc.Put = hc.Put
 		}
-		proc.Get = hc.Get
-		proc.Put = hc.Put
 	}
 
 	return proc.Run()
+}
+
+func hostPort(base string) (string, error) {
+	u, err := url.Parse(base)
+	if err != nil {
+		return "", err
+	}
+	port := u.Port()
+	if port == "" {
+		port = "80"
+		if u.Scheme == "https" {
+			port = "443"
+		}
+	}
+	return net.JoinHostPort(u.Hostname(), port), nil
 }
 
 func gatewayIP() (string, bool) {
