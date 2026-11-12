@@ -28,8 +28,11 @@ type HTTPClient struct {
 	logOnce sync.Once
 }
 
-// Without a timeout a stalled server hangs the build instead of tripping the breaker.
-var defaultClient = &http.Client{Timeout: 30 * time.Second}
+// DefaultTimeout bounds each request; without it a stalled server hangs the build
+// instead of tripping the breaker.
+const DefaultTimeout = 30 * time.Second
+
+var defaultClient = &http.Client{Timeout: DefaultTimeout}
 
 func (c *HTTPClient) client() *http.Client {
 	if c.HTTP != nil {
