@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -69,13 +70,26 @@ func runCacheprog(_ *cobra.Command, _ []string) error {
 			log.Printf("go-build-cache: cache server %s unreachable, using local disk only: %v", serverBase, err)
 		} else {
 			_ = c.Close()
-			hc := &cache.HTTPClient{BaseURL: serverBase, Disk: disk}
+			hc := &cache.HTTPClient{BaseURL: serverBase, Disk: disk, HTTP: &http.Client{Timeout: serverTimeout()}}
 			proc.Get = hc.Get
 			proc.Put = hc.Put
 		}
 	}
 
 	return proc.Run()
+}
+
+func serverTimeout() time.Duration {
+	v := os.Getenv("GO_BUILD_CACHE_TIMEOUT")
+	if v == "" {
+		return cache.DefaultTimeout
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		log.Printf("go-build-cache: invalid GO_BUILD_CACHE_TIMEOUT %q, using %s", v, cache.DefaultTimeout)
+		return cache.DefaultTimeout
+	}
+	return d
 }
 
 func hostPort(base string) (string, error) {

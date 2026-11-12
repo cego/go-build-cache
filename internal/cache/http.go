@@ -9,12 +9,13 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // HTTPClient is a GOCACHEPROG backend that talks to a go-build-cache server
 // over HTTP, keeping a local disk copy. HTTP failures are non-fatal: gets
 // degrade to a miss and puts keep the local disk result, so a flaky or down
-// server never fails the build. The first transport error trips a circuit
+// server never fails the build. The first transport error or timeout trips a circuit
 // breaker: it is logged once, after which the client serves from local disk
 // only and stops contacting the server, so a build on a machine without
 // access never floods the log.
@@ -27,11 +28,17 @@ type HTTPClient struct {
 	logOnce sync.Once
 }
 
+// DefaultTimeout bounds each request; without it a stalled server hangs the build
+// instead of tripping the breaker.
+const DefaultTimeout = 30 * time.Second
+
+var defaultClient = &http.Client{Timeout: DefaultTimeout}
+
 func (c *HTTPClient) client() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return http.DefaultClient
+	return defaultClient
 }
 
 func (c *HTTPClient) trip(err error) {
@@ -55,7 +62,7 @@ func (c *HTTPClient) Get(ctx context.Context, actionID string) (outputID, diskPa
 		c.trip(err)
 		return "", "", nil
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode == http.StatusNotFound {
 		return "", "", nil
 	}
@@ -64,12 +71,17 @@ func (c *HTTPClient) Get(ctx context.Context, actionID string) (outputID, diskPa
 		return "", "", nil
 	}
 
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.trip(err)
+		return "", "", nil
+	}
 	var av ActionValue
-	if err := json.NewDecoder(res.Body).Decode(&av); err != nil {
+	if err := json.Unmarshal(data, &av); err != nil {
 		return "", "", nil
 	}
 
-	var body io.Reader = bytes.NewReader(nil)
+	body := &errReader{r: bytes.NewReader(nil)}
 	if av.Size > 0 {
 		oreq, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/output/"+av.OutputID, nil)
 		ores, err := c.client().Do(oreq)
@@ -77,14 +89,18 @@ func (c *HTTPClient) Get(ctx context.Context, actionID string) (outputID, diskPa
 			c.trip(err)
 			return "", "", nil
 		}
-		defer ores.Body.Close()
+		defer func() { _ = ores.Body.Close() }()
 		if ores.StatusCode != http.StatusOK {
 			return "", "", nil
 		}
-		body = ores.Body
+		body.r = ores.Body
 	}
 
 	diskPath, err = c.Disk.Put(ctx, actionID, av.OutputID, av.Size, body)
+	if body.err != nil {
+		c.trip(body.err)
+		return "", "", nil
+	}
 	if err != nil {
 		return "", "", err
 	}
@@ -112,9 +128,23 @@ func (c *HTTPClient) Put(ctx context.Context, actionID, outputID string, size in
 		c.trip(err)
 		return diskPath, nil
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusNoContent {
 		log.Printf("go-build-cache: PUT %s/%s: %s", actionID, outputID, res.Status)
 	}
 	return diskPath, nil
+}
+
+// errReader records read errors so a failed download can be told apart from a disk error.
+type errReader struct {
+	r   io.Reader
+	err error
+}
+
+func (e *errReader) Read(p []byte) (int, error) {
+	n, err := e.r.Read(p)
+	if err != nil && err != io.EOF {
+		e.err = err
+	}
+	return n, err
 }

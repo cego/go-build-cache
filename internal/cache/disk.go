@@ -87,7 +87,7 @@ func writeFileAtomic(path string, r io.Reader, size int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	n, err := io.Copy(tmp, r)
 	if err != nil {

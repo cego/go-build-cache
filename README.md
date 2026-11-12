@@ -32,6 +32,10 @@ export GOCACHEPROG="go-build-cache cacheprog --cache-server=http://<server-host>
 go build ./...
 ```
 
+Each request to the server times out after 30s, after which `cacheprog` uses
+the local build cache only. Override with `GO_BUILD_CACHE_TIMEOUT`, e.g.
+`GO_BUILD_CACHE_TIMEOUT=2m`.
+
 ## Install
 
 - Binaries (static, linux amd64/arm64): GitHub Releases.
