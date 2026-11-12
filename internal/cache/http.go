@@ -59,7 +59,7 @@ func (c *HTTPClient) Get(ctx context.Context, actionID string) (outputID, diskPa
 		c.trip(err)
 		return "", "", nil
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode == http.StatusNotFound {
 		return "", "", nil
 	}
@@ -86,7 +86,7 @@ func (c *HTTPClient) Get(ctx context.Context, actionID string) (outputID, diskPa
 			c.trip(err)
 			return "", "", nil
 		}
-		defer ores.Body.Close()
+		defer func() { _ = ores.Body.Close() }()
 		if ores.StatusCode != http.StatusOK {
 			return "", "", nil
 		}
@@ -125,7 +125,7 @@ func (c *HTTPClient) Put(ctx context.Context, actionID, outputID string, size in
 		c.trip(err)
 		return diskPath, nil
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusNoContent {
 		log.Printf("go-build-cache: PUT %s/%s: %s", actionID, outputID, res.Status)
 	}
